@@ -9,34 +9,7 @@ import (
 	"github.com/bwmarrin/discordgo"
 )
 
-// TargetChannel Botがメッセージを投稿するDiscordチャンネル
-type TargetChannel struct {
-	s     *discordgo.Session
-	event *discordgo.MessageCreate
-}
-
-func (tc *TargetChannel) messageSend(message string) error {
-	// コマンドが投稿されたチャンネル
-	targetChannel, err := tc.s.State.Channel(tc.event.ChannelID)
-	if err != nil {
-		log.Println("チャンネルの取得に失敗 :", err)
-		return err
-	}
-
-	// Botからメッセージ投稿
-	if _, err := tc.s.ChannelMessageSend(targetChannel.ID, message); err != nil {
-		log.Println("チャンネルメッセージの送信に失敗 :", err)
-		return err
-	}
-	return nil
-}
-
 func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
-	targetChannel := TargetChannel{
-		s:     s,
-		event: event,
-	}
-
 	messages, err := config.GetConfig()
 	if err != nil {
 		log.Fatalln(err)
@@ -45,7 +18,11 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 	if event.Content == messages.StartTriggerMessage {
 		// 起動時
 		log.Println("開始 : インスタンス起動...")
-		targetChannel.messageSend("インスタンスの起動コマンドを検知")
+		_, err := s.ChannelMessageSend(event.ChannelID, "インスタンスの起動コマンドを検知")
+		if err != nil {
+			log.Println("チャンネルメッセージの送信に失敗 :", err)
+			return
+		}
 
 		statusErr := aws.StartInstance()
 		if !statusErr.IsEmpty() {
@@ -69,12 +46,20 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 				errDiscordMsg = "インスタンスの起動状態不明　再度のコマンド入力を要求"
 			}
 			log.Println(errLogMsg, statusErr.Err)
-			targetChannel.messageSend(errDiscordMsg)
+			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
+			if err != nil {
+				log.Println("チャンネルメッセージの送信に失敗 :", err)
+				return
+			}
 			return
 		}
 
 		log.Println("正常終了 : インスタンス起動")
-		targetChannel.messageSend("インスタンスの起動に成功")
+		_, err = s.ChannelMessageSend(event.ChannelID, "インスタンスの起動に成功")
+		if err != nil {
+			log.Println("チャンネルメッセージの送信に失敗 :", err)
+			return
+		}
 
 		// IPアドレス通知
 		log.Println("IPアドレス取得待機中...")
@@ -91,16 +76,28 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 				errLogMsg = "IPアドレス取得時のレスポンスに異常 :"
 			}
 			log.Println(errLogMsg, err)
-			targetChannel.messageSend(errDiscordMsg)
+			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
+			if err != nil {
+				log.Println("チャンネルメッセージの送信に失敗 :", err)
+				return
+			}
 			return
 		}
 
-		targetChannel.messageSend("今回のIPアドレス : " + ipaddress)
+		_, err = s.ChannelMessageSend(event.ChannelID, "今回のIPアドレス : "+ipaddress)
+		if err != nil {
+			log.Println("チャンネルメッセージの送信に失敗 :", err)
+			return
+		}
 
 	} else if event.Content == messages.HibernateTriggerMessage {
 		// 停止時
 		log.Println("開始 : インスタンス停止...")
-		targetChannel.messageSend("インスタンスの停止コマンドを検知")
+		_, err := s.ChannelMessageSend(event.ChannelID, "インスタンスの停止コマンドを検知")
+		if err != nil {
+			log.Println("チャンネルメッセージの送信に失敗 :", err)
+			return
+		}
 
 		statusErr := aws.StopInstance()
 		if !statusErr.IsEmpty() {
@@ -124,17 +121,29 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 				errDiscordMsg = "インスタンスの停止状態不明　再度のコマンド入力を要求"
 			}
 			log.Println(errLogMsg, err)
-			targetChannel.messageSend(errDiscordMsg)
+			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
+			if err != nil {
+				log.Println("チャンネルメッセージの送信に失敗 :", err)
+				return
+			}
 			return
 		}
 
 		log.Println("正常終了 : インスタンス停止")
-		targetChannel.messageSend("インスタンスの停止に成功")
+		_, err = s.ChannelMessageSend(event.ChannelID, "インスタンスの停止に成功")
+		if err != nil {
+			log.Println("チャンネルメッセージの送信に失敗 :", err)
+			return
+		}
 
 	} else if event.Content == messages.GetStatusTriggerMessage {
 		// 起動状態の確認(IPアドレスの取得)
 		log.Println("開始 : インスタンスステータス確認")
-		targetChannel.messageSend("インスタンスの確認コマンドを検知")
+		_, err := s.ChannelMessageSend(event.ChannelID, "インスタンスの確認コマンドを検知")
+		if err != nil {
+			log.Println("チャンネルメッセージの送信に失敗 :", err)
+			return
+		}
 
 		ipaddress, statusErr := aws.GetIPAddress()
 		if !statusErr.IsEmpty() {
@@ -147,15 +156,26 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 				errLogMsg = "IPアドレス取得時のレスポンスに異常 :"
 			}
 			log.Println(errLogMsg, err)
-			targetChannel.messageSend(errDiscordMsg)
+			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
+			if err != nil {
+				log.Println("チャンネルメッセージの送信に失敗 :", err)
+				return
+			}
 			return
 		}
 
 		if ipaddress != "" {
-			targetChannel.messageSend("インスタンスは起動済み :" + ipaddress)
+			_, err := s.ChannelMessageSend(event.ChannelID, "インスタンスは起動済み :"+ipaddress)
+			if err != nil {
+				log.Println("チャンネルメッセージの送信に失敗 :", err)
+				return
+			}
 		} else {
-			targetChannel.messageSend("インスタンスは未起動")
+			_, err := s.ChannelMessageSend(event.ChannelID, "インスタンスは未起動")
+			if err != nil {
+				log.Println("チャンネルメッセージの送信に失敗 :", err)
+				return
+			}
 		}
-
 	}
 }
