@@ -35,8 +35,20 @@ type InstanceStatus struct {
 	} `json:"PreviousState"`
 }
 
+type Client interface {
+	GetIPAddress() (string, error)
+	StartInstance() error
+	StopInstance() error
+}
+
+type EC2Client struct{}
+
+func NewEC2Client() Client {
+	return EC2Client{}
+}
+
 // GetIPAddress インスタンスのIPアドレス取得
-func GetIPAddress() (string, error) {
+func (c EC2Client) GetIPAddress() (string, error) {
 	statusOutputJSON, err := exec.Command("aws", "ec2", "describe-instances", "--instance-ids", os.Getenv("INSTANCE_ID"), "--query", "Reservations[].Instances[].{publicip:PublicIpAddress}").Output()
 	if err != nil {
 		return "", WrapError(err, ErrFailedGetIpAddress)
@@ -55,7 +67,7 @@ func GetIPAddress() (string, error) {
 	return ipaddress, nil
 }
 
-func StartInstance() error {
+func (c EC2Client) StartInstance() error {
 	outputJSON, err := exec.Command("aws", "ec2", "start-instances", "--instance-ids", os.Getenv("INSTANCE_ID")).Output()
 	if err != nil {
 		return WrapError(err, ErrFailedStartInstance)
@@ -84,7 +96,7 @@ func StartInstance() error {
 	return nil
 }
 
-func StopInstance() error {
+func (c EC2Client) StopInstance() error {
 	outputJSON, err := exec.Command("aws", "ec2", "stop-instances", "--instance-ids", os.Getenv("INSTANCE_ID")).Output()
 	if err != nil {
 		return WrapError(err, ErrFailedStopInstance)

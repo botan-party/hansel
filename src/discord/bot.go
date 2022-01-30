@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"hansel/aws"
 	"log"
 	"os"
 
@@ -8,7 +9,8 @@ import (
 )
 
 type Bot struct {
-	session *discordgo.Session
+	session   *discordgo.Session
+	awsClient aws.Client
 }
 
 func NewBot() (*Bot, error) {
@@ -18,7 +20,8 @@ func NewBot() (*Bot, error) {
 	}
 
 	return &Bot{
-		session: session,
+		session:   session,
+		awsClient: aws.NewEC2Client(),
 	}, nil
 }
 

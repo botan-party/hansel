@@ -25,7 +25,7 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 			return
 		}
 
-		err = aws.StartInstance()
+		err = b.awsClient.StartInstance()
 		if err != nil {
 			log.Println(err)
 
@@ -61,7 +61,7 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 		log.Println("IPアドレス取得待機中...")
 		time.Sleep(time.Second)
 
-		ipaddress, err := aws.GetIPAddress()
+		ipaddress, err := b.awsClient.GetIPAddress()
 		if err != nil {
 			log.Println(err)
 
@@ -89,7 +89,7 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 			return
 		}
 
-		err = aws.StopInstance()
+		err = b.awsClient.StopInstance()
 		if err != nil {
 			log.Println(err)
 
@@ -130,7 +130,7 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 			return
 		}
 
-		ipaddress, err := aws.GetIPAddress()
+		ipaddress, err := b.awsClient.GetIPAddress()
 		if err != nil {
 			log.Println(err)
 
