@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"errors"
 	"hansel/aws"
 	"hansel/config"
 	"log"
@@ -24,28 +25,23 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 			return
 		}
 
-		statusErr := aws.StartInstance()
-		if !statusErr.IsEmpty() {
-			errLogMsg := ""
+		err = aws.StartInstance()
+		if err != nil {
+			log.Println(err)
+
 			errDiscordMsg := ""
-			switch statusErr.Code {
-			case aws.ERR_FAILED_START_INSTANCE:
-				errLogMsg = "起動に失敗した :"
+			if errors.Is(err, aws.ErrFailedStartInstance) {
 				errDiscordMsg = "インスタンスの起動に失敗"
-			case aws.ERR_INVALID_RESPONSE_START_INSTANCE:
-				errLogMsg = "起動時のレスポンスに異常 :"
+			} else if errors.Is(err, aws.ErrInvalidResponseStartInstance) {
 				errDiscordMsg = "インスタンスの起動に失敗"
-			case aws.ERR_INSTANCE_ALREADY_STARTED:
-				errLogMsg = "既に起動している"
+			} else if errors.Is(err, aws.ErrInstanceAlreadyStarted) {
 				errDiscordMsg = "インスタンスは起動済み"
-			case aws.ERR_STARTING_INSTANCE:
-				errLogMsg = "起動処理実行中"
+			} else if errors.Is(err, aws.ErrStartingInstance) {
 				errDiscordMsg = "インスタンスは既に起動準備中"
-			case aws.ERR_FAILED_WAIT_START_INSTANCE:
-				errLogMsg = "起動待ちに失敗した"
+			} else if errors.Is(err, aws.ErrFailedWaitStartInstance) {
 				errDiscordMsg = "インスタンスの起動状態不明　再度のコマンド入力を要求"
 			}
-			log.Println(errLogMsg, statusErr.Err)
+
 			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
 			if err != nil {
 				log.Println("チャンネルメッセージの送信に失敗 :", err)
@@ -65,17 +61,11 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 		log.Println("IPアドレス取得待機中...")
 		time.Sleep(time.Second)
 
-		ipaddress, statusErr := aws.GetIPAddress()
-		if !statusErr.IsEmpty() {
-			errLogMsg := ""
+		ipaddress, err := aws.GetIPAddress()
+		if err != nil {
+			log.Println(err)
+
 			errDiscordMsg := "IPアドレスの取得に失敗"
-			switch statusErr.Code {
-			case aws.ERR_FAILED_GET_IP_ADDRESS:
-				errLogMsg = "IPアドレス取得時、コマンド実行に失敗 : "
-			case aws.ERR_INVALID_RESPONSE_GET_IP_ADDRESS:
-				errLogMsg = "IPアドレス取得時のレスポンスに異常 :"
-			}
-			log.Println(errLogMsg, err)
 			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
 			if err != nil {
 				log.Println("チャンネルメッセージの送信に失敗 :", err)
@@ -99,28 +89,23 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 			return
 		}
 
-		statusErr := aws.StopInstance()
-		if !statusErr.IsEmpty() {
-			errLogMsg := ""
+		err = aws.StopInstance()
+		if err != nil {
+			log.Println(err)
+
 			errDiscordMsg := ""
-			switch statusErr.Code {
-			case aws.ERR_FAILED_STOP_INSTANCE:
-				errLogMsg = "停止に失敗した :"
+			if errors.Is(err, aws.ErrFailedStopInstance) {
 				errDiscordMsg = "インスタンスの停止に失敗"
-			case aws.ERR_INVALID_RESPONSE_STOP_INSTANCE:
-				errLogMsg = "停止時のレスポンスに異常 :"
+			} else if errors.Is(err, aws.ErrInvalidResponseStopInstance) {
 				errDiscordMsg = "インスタンスの停止に失敗"
-			case aws.ERR_INSTANCE_ALREADY_STOPPED:
-				errLogMsg = "既に停止している"
+			} else if errors.Is(err, aws.ErrInstanceAlreadyStopped) {
 				errDiscordMsg = "インスタンスは停止済み"
-			case aws.ERR_STOPPING_INSTANCE:
-				errLogMsg = "停止処理実行中"
+			} else if errors.Is(err, aws.ErrStoppingInstance) {
 				errDiscordMsg = "インスタンスは既に停止準備中"
-			case aws.ERR_FAILED_WAIT_STOP_INSTANCE:
-				errLogMsg = "停止待ちに失敗した :"
+			} else if errors.Is(err, aws.ErrFailedWaitStopInstance) {
 				errDiscordMsg = "インスタンスの停止状態不明　再度のコマンド入力を要求"
 			}
-			log.Println(errLogMsg, err)
+
 			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
 			if err != nil {
 				log.Println("チャンネルメッセージの送信に失敗 :", err)
@@ -145,17 +130,11 @@ func (b *Bot) receive(s *discordgo.Session, event *discordgo.MessageCreate) {
 			return
 		}
 
-		ipaddress, statusErr := aws.GetIPAddress()
-		if !statusErr.IsEmpty() {
-			errLogMsg := ""
+		ipaddress, err := aws.GetIPAddress()
+		if err != nil {
+			log.Println(err)
+
 			errDiscordMsg := "インスタンスの確認に失敗"
-			switch statusErr.Code {
-			case aws.ERR_FAILED_GET_IP_ADDRESS:
-				errLogMsg = "IPアドレス取得時、コマンド実行に失敗 : "
-			case aws.ERR_INVALID_RESPONSE_GET_IP_ADDRESS:
-				errLogMsg = "IPアドレス取得時のレスポンスに異常 :"
-			}
-			log.Println(errLogMsg, err)
 			_, err := s.ChannelMessageSend(event.ChannelID, errDiscordMsg)
 			if err != nil {
 				log.Println("チャンネルメッセージの送信に失敗 :", err)

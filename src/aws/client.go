@@ -36,15 +36,15 @@ type InstanceStatus struct {
 }
 
 // GetIPAddress インスタンスのIPアドレス取得
-func GetIPAddress() (string, StatusError) {
+func GetIPAddress() (string, error) {
 	statusOutputJSON, err := exec.Command("aws", "ec2", "describe-instances", "--instance-ids", os.Getenv("INSTANCE_ID"), "--query", "Reservations[].Instances[].{publicip:PublicIpAddress}").Output()
 	if err != nil {
-		return "", NewStatusError(ERR_FAILED_GET_IP_ADDRESS, err)
+		return "", WrapError(err, ErrFailedGetIpAddress)
 	}
 
 	ssResponse := []ServerStatusResponse{}
 	if err := json.Unmarshal(statusOutputJSON, &ssResponse); err != nil {
-		return "", NewStatusError(ERR_INVALID_RESPONSE_GET_IP_ADDRESS, err)
+		return "", WrapError(err, ErrInvalidResponseGetIpAddress)
 	}
 
 	ipaddress := ssResponse[0].PublicIP
@@ -52,63 +52,63 @@ func GetIPAddress() (string, StatusError) {
 		log.Println("IPアドレス : ", ipaddress)
 	}
 
-	return ipaddress, StatusError{}
+	return ipaddress, nil
 }
 
-func StartInstance() StatusError {
+func StartInstance() error {
 	outputJSON, err := exec.Command("aws", "ec2", "start-instances", "--instance-ids", os.Getenv("INSTANCE_ID")).Output()
 	if err != nil {
-		return NewStatusError(ERR_FAILED_START_INSTANCE, err)
+		return WrapError(err, ErrFailedStartInstance)
 	}
 
 	startResponse := StartResponse{}
 	if err := json.Unmarshal(outputJSON, &startResponse); err != nil {
-		return NewStatusError(ERR_INVALID_RESPONSE_START_INSTANCE, err)
+		return WrapError(err, ErrInvalidResponseStartInstance)
 	}
 
 	currentState := startResponse.StartingInstances[0].CurrentState.Name
 	if currentState == "running" {
-		return NewStatusError(ERR_INSTANCE_ALREADY_STARTED, nil)
+		return WrapError(nil, ErrInstanceAlreadyStarted)
 	}
 
 	previousState := startResponse.StartingInstances[0].PreviousState.Name
 	if currentState == "pending" && previousState == "pending" {
-		return NewStatusError(ERR_STARTING_INSTANCE, nil)
+		return WrapError(nil, ErrStartingInstance)
 	}
 
 	// 開始待ち
 	if _, err := exec.Command("aws", "ec2", "wait", "instance-running", "--instance-ids", os.Getenv("INSTANCE_ID")).Output(); err != nil {
-		return NewStatusError(ERR_FAILED_WAIT_START_INSTANCE, err)
+		return WrapError(err, ErrFailedWaitStartInstance)
 	}
 
-	return StatusError{}
+	return nil
 }
 
-func StopInstance() StatusError {
+func StopInstance() error {
 	outputJSON, err := exec.Command("aws", "ec2", "stop-instances", "--instance-ids", os.Getenv("INSTANCE_ID")).Output()
 	if err != nil {
-		return NewStatusError(ERR_FAILED_STOP_INSTANCE, err)
+		return WrapError(err, ErrFailedStopInstance)
 	}
 
 	stopResponse := StopResponse{}
 	if err := json.Unmarshal(outputJSON, &stopResponse); err != nil {
-		return NewStatusError(ERR_INVALID_RESPONSE_STOP_INSTANCE, err)
+		return WrapError(err, ErrInvalidResponseStopInstance)
 	}
 
 	currentState := stopResponse.StoppingInstances[0].CurrentState.Name
 	if currentState == "stopped" {
-		return NewStatusError(ERR_INSTANCE_ALREADY_STOPPED, nil)
+		return WrapError(nil, ErrInstanceAlreadyStopped)
 	}
 
 	previousState := stopResponse.StoppingInstances[0].PreviousState.Name
 	if currentState == "stopping" && previousState == "stopping" {
-		return NewStatusError(ERR_STOPPING_INSTANCE, nil)
+		return WrapError(nil, ErrStoppingInstance)
 	}
 
 	// 停止待ち
 	if _, err := exec.Command("aws", "ec2", "wait", "instance-stopped", "--instance-ids", os.Getenv("INSTANCE_ID")).Output(); err != nil {
-		return NewStatusError(ERR_FAILED_WAIT_STOP_INSTANCE, err)
+		return WrapError(err, ErrFailedWaitStopInstance)
 	}
 
-	return StatusError{}
+	return nil
 }
