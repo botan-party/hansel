@@ -22,9 +22,12 @@ jobs:
 
       - name: Run go vet
         run: go vet ./...
+        working-directory: ./src
 
       - name: Run go build
         run: go build .
+        working-directory: ./src
 
       - name: Run go test
         run: go test -v ./...
+        working-directory: ./src
